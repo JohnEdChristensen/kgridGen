@@ -3,18 +3,11 @@ import f90wrap.runtime
 import logging
 import numpy as np
 
-def get_irr_kpoints(atoms, grid=None, HNF=None, shift=None, reps=None, aeps=None):
-    """Generates the irreducible k-point set for the system defined by the
-    atoms object and either the grid or the HNF given. If both the HNF
-    and grid are provided then the grid will be used and the HNF ignored.
+def get_irr_kpoints(cell, at_base, at,grid,reciprocal_cell, shift=None, eps=None, aeps=None):
+    """Generates the irreducible k-point set for the system.
 
     Args:
-        atoms (ase.Atoms): an ASE Atoms object.
-        HNF (optional, matrix, int): an integer matrix that generates a supercell of 
-          the parent cell.
-        grid (optional, matrix. float): the grid generating vectors, as columns of 
-          the matrix.
-        shift (optional, list, float): a list of the offset from gamma.
+        see fortran documentaiton
 
     Returns:
         The irreducible k-points and their weights.
@@ -22,45 +15,23 @@ def get_irr_kpoints(atoms, grid=None, HNF=None, shift=None, reps=None, aeps=None
 
     if shift is None:
         shift = [0,0,0]
-    if reps is None:
+    if eps is None:
         reps = 1E-10
     if aeps is None:
         aeps = 1E-10
     
-    if HNF is None and grid is None:
-        raise ValueError("Either the HNF or the grid generating vectors must "
-                         "be provided.")
+    int_mat = np.matmul(np.linalg.inv(grid),reciprocal_cell)
+    vol = np.linalg.det(int_mat)
+    if np.allclose(vol, np.round(vol)):
+        vol = int(np.round(vol))
+    else:
+        raise ValueError("The grid and the reciprocal lattice aren't commensurate.")
 
-    cell = np.transpose(atoms.cell)
-    at_base = []
-    for pos in atoms.positions:
-        at_base.append(np.matmul(np.linalg.inv(cell),pos))
-    cell = cell/np.linalg.det(cell)
-    reciprocal_cell = np.transpose(np.linalg.inv(cell))
-    if grid is not None:
-        int_mat = np.matmul(np.linalg.inv(grid),reciprocal_cell)
-        vol = np.linalg.det(int_mat)
-        if np.allclose(vol, np.round(vol)):
-            vol = int(np.round(vol))
-        else:
-            raise ValueError("The grid and the reciprocal lattice aren't commensurate.")
-
-    if HNF is not None and grid is None:
-        vol = int(np.round(np.linalg.det(HNF)))
-        supercell = np.matmul(cell,HNF)
-        grid = np.linalg.inv(np.transpose(supercell))
-
-
-    at_base = np.transpose(at_base)
-    t_map = {k:v for v,k in enumerate(np.unique(atoms.get_atomic_numbers()))}
-    at = np.array([t_map[i] for i in atoms.get_atomic_numbers()], dtype=np.int32, order='F')
     irr_kpoint_list = np.zeros((vol,3), dtype=float, order='F')
     weights = np.zeros(vol,dtype=np.int32, order='F')
 
-    print("grid",grid)
-    print("grid det", np.linalg.det(grid))
     Wrap_Kpoints.getirredkpoints(cell, at_base, at, grid, reciprocal_cell,
-                                            shift, irr_kpoint_list, weights, reps_=reps, aeps_=aeps)
+                                            shift,irr_kpoint_list,weights,reps_=reps,aeps_=aeps)
 
     keep = np.where(weights != 0)[0]
 
