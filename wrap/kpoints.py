@@ -4,17 +4,10 @@ import logging
 import numpy as np
 
 def get_irr_kpoints(cell, at_base, at,grid,reciprocal_cell, shift=None, eps=None, aeps=None):
-    """Generates the irreducible k-point set for the system defined by the
-    atoms object and either the grid or the HNF given. If both the HNF
-    and grid are provided then the grid will be used and the HNF ignored.
+    """Generates the irreducible k-point set for the system.
 
     Args:
-        atoms (ase.Atoms): an ASE Atoms object.
-        HNF (optional, matrix, int): an integer matrix that generates a supercell of 
-          the parent cell.
-        grid (optional, matrix. float): the grid generating vectors, as columns of 
-          the matrix.
-        shift (optional, list, float): a list of the offset from gamma.
+        see fortran documentaiton
 
     Returns:
         The irreducible k-points and their weights.
